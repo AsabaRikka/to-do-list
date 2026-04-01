@@ -33,7 +33,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
+      <div className="mx-auto max-w-5xl px-4 py-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">待办清单</h1>
           <p className="text-sm text-zinc-600">
@@ -41,24 +41,36 @@ function App() {
           </p>
         </header>
 
-        <Stats stats={stats} />
+        <main className="mt-4 grid gap-4 md:grid-cols-2 md:grid-rows-[auto_1fr] md:items-start">
+          <section className="md:col-start-1 md:row-start-1">
+            <Stats stats={stats} />
+          </section>
 
-        <TaskForm categories={categories} onAddTask={addTask} />
+          <section className="md:col-start-2 md:row-start-1">
+            <TaskForm categories={categories} onAddTask={addTask} />
+          </section>
 
-        <FilterBar
-          filter={filter}
-          categories={categories}
-          onSetStatus={setStatus}
-          onSetCategory={setCategory}
-        />
+          <section className="md:col-start-1 md:row-start-2">
+            <FilterBar
+              filter={filter}
+              categories={categories}
+              onSetStatus={setStatus}
+              onSetCategory={setCategory}
+            />
+          </section>
 
-        <TaskList
-          tasks={filteredTasks}
-          onToggle={toggleTask}
-          onDelete={deleteTask}
-          emptyState={emptyState}
-          onResetFilter={emptyState === 'noResults' ? handleResetFilter : undefined}
-        />
+          <section className="md:col-start-2 md:row-start-2">
+            <TaskList
+              tasks={filteredTasks}
+              onToggle={toggleTask}
+              onDelete={deleteTask}
+              emptyState={emptyState}
+              onResetFilter={
+                emptyState === 'noResults' ? handleResetFilter : undefined
+              }
+            />
+          </section>
+        </main>
       </div>
     </div>
   )

@@ -20,7 +20,7 @@ export function FilterBar({
   onSetCategory,
 }: FilterBarProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div>
         <div className="text-sm font-medium text-zinc-900">状态</div>
         <div className="mt-2 inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-1">
@@ -45,7 +45,7 @@ export function FilterBar({
         </div>
       </div>
 
-      <div className="sm:min-w-56">
+      <div>
         <label className="text-sm font-medium text-zinc-900" htmlFor="filter-category">
           分类
         </label>
@@ -66,4 +66,3 @@ export function FilterBar({
     </div>
   )
 }
-

@@ -11,7 +11,7 @@ export function Stats({ stats }: StatsProps) {
   const percent = Math.round(stats.completionRate * 100)
 
   return (
-    <div className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm lg:grid-cols-4">
       <div className="rounded-lg bg-zinc-50 p-3">
         <div className="text-xs text-zinc-600">总数</div>
         <div
