@@ -28,5 +28,3 @@
 
 选型：React + TypeScript + Vite + Tailwind CSS + localStorage
 说明：适配MVP快速开发需求，localStorage实现本地数据存储，无需后端支撑，降低开发成本，保障核心功能可用。
-
-# 留白
