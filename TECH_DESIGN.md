@@ -1,87 +1,135 @@
 # TECH_DESIGN.md
 
-## 技术栈
+## 技术栈（全栈）
 
-### 前端技术栈
-- **React**: 用于构建用户界面，提供组件化开发。
-- **TypeScript**: 提供类型安全，提高代码质量和开发效率。
-- **Vite**: 快速的构建工具，支持热重载和现代开发体验。
-- **Tailwind CSS**: 实用优先的CSS框架，用于快速样式设计。
-- **localStorage**: 用于本地数据存储，实现无后端的数据持久化。
+### 前端
+- **React + TypeScript + Vite**
+- **Tailwind CSS**
+- **Zustand**：单一数据源 + selectors
+- **测试**：Vitest + React Testing Library
+- **代码质量**：ESLint + Prettier
 
-### 开发工具
-- **ESLint**: 代码质量检查。
-- **Prettier**: 代码格式化。
+### 后端
+- **Node.js + Express**
+- 建议后端同样使用 TypeScript（便于共享类型与提升可维护性）
 
-## 项目结构
+### 数据库
+- **本地开发：SQLite**（文件库，零依赖，启动快）
+- **未来生产：MySQL（可选迁移目标）**
+
+### 认证
+- **JWT（JSON Web Token）**
+- 约定：`Authorization: Bearer <token>`
+
+## 目标 UI（截图对齐）
+
+页面采用两列固定布局：
+- 左侧：固定宽度导航栏（用户信息/搜索/智能分类/待办集）
+- 右侧：自适应内容区（标题区/任务列表/底部添加入口）
+
+计数展示规则：
+- 不再有独立 Stats 模块
+- 左侧分类与待办集标题后直接显示数量（默认口径为“未完成数”，已完成分类显示完成数）
+
+移动端：
+- 左侧栏采用抽屉（drawer）显示，避免挤压右侧内容区
+
+## 工程结构（建议）
+
+当前仓库已存在前端应用（`src/`）。后端建议新增目录 `server/`（后续实现时落地）：
 
 ```
-todo-app/
+repo/
+├── src/                    # 前端（Vite）
 ├── public/
-│   └── index.html
-├── src/
-│   ├── components/
-│   │   ├── TaskForm.tsx          # 任务添加表单组件
-│   │   ├── TaskList.tsx          # 任务列表组件
-│   │   ├── TaskItem.tsx          # 单个任务项组件
-│   │   ├── FilterBar.tsx         # 分类筛选栏组件
-│   │   └── Stats.tsx             # 统计数据组件
-│   ├── hooks/
-│   │   └── useTasks.ts           # 自定义Hook管理任务状态
-│   ├── types/
-│   │   └── index.ts              # TypeScript类型定义
-│   ├── utils/
-│   │   └── storage.ts            # localStorage工具函数
-│   ├── App.tsx                   # 主应用组件
-│   ├── main.tsx                  # 应用入口
-│   └── index.css                 # 全局样式
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── tailwind.config.js
+├── server/                 # 后端（Express）
+│   ├── src/
+│   │   ├── app.ts
+│   │   ├── routes/
+│   │   ├── middleware/
+│   │   ├── db/
+│   │   └── utils/
+│   └── .env.example
+└── ...
 ```
 
-## 数据模型
+开发环境建议：
+- 前端通过环境变量配置 API Base URL
+- 或在 Vite 中配置 dev proxy，将 `/api` 代理到后端
 
-### 任务数据结构
-```typescript
-interface Task {
-  id: string;              // 唯一标识符
-  name: string;            // 任务名称
-  deadline: Date | null;   // 截止时间
-  category: string;        // 分类
-  priority: 'low' | 'medium' | 'high';  // 优先级
-  completed: boolean;      // 完成状态
-  createdAt: Date;         // 创建时间
-}
-```
+## 数据模型（面向截图功能）
 
-### 应用状态
-- 任务列表：`Task[]`
-- 当前筛选条件：`{ status: 'all' | 'completed' | 'pending', category: string | null }`
+> 约定：应用层与 API 层均使用 **JSON primitives**；不直接存 `Date` 对象。
 
-## 关键技术点
+### User
+- `id: string`
+- `email: string`
+- `name: string`
+- `avatarUrl: string | null`
+- `createdAt: number`
 
-### 1. 状态管理
-使用React的useState和useEffect Hook管理任务状态，通过localStorage实现数据持久化。自定义Hook `useTasks` 封装状态逻辑。
+### TodoList（待办集）
+- `id: string`
+- `userId: string`
+- `name: string`
+- `createdAt: number`
 
-### 2. 数据存储
-利用localStorage进行客户端数据存储，数据以JSON格式序列化存储。提供工具函数处理数据的读取、写入和初始化。
+### Task（任务）
+- `id: string`
+- `userId: string`
+- `listId: string`
+- `name: string`
+- `remark: string`（空字符串表示无备注，支持多行）
+- `deadline: string | null`（datetime-local 原始值，如 `2026-04-01T18:30`，不转 ISO、不做时区换算）
+- `priority: 'low' | 'medium' | 'high'`
+- `completed: boolean`
+- `starred: boolean`
+- `createdAt: number`
+- `updatedAt: number`
 
-### 3. 组件设计
-采用组件化架构，TaskForm负责任务添加，TaskList展示任务列表，FilterBar处理筛选，Stats显示统计信息。组件间通过props传递数据和回调函数。
+## API 设计（最小可实现）
 
-### 4. 类型安全
-使用TypeScript定义接口和类型，确保数据结构的一致性和代码的可维护性。
+### Auth
+- `POST /auth/login` → `{ token }`
+- `GET /me` → `User`
 
-### 5. 样式设计
-使用Tailwind CSS进行响应式设计，确保在不同设备上的一致体验。
+### Lists
+- `GET /lists` → `TodoList[]`
+- `POST /lists` → `TodoList`
+- `PATCH /lists/:id` → `TodoList`
+- `DELETE /lists/:id` → `204`（级联删除该列表下 tasks；必须鉴权）
 
-### 6. 性能优化
-- 使用React.memo优化组件渲染
-- 合理使用useCallback和useMemo避免不必要的重新计算
+### Tasks
+- `GET /tasks?view=<today|all|completed|pending|starred>&listId=<id>&q=<keyword>` → `Task[]`
+  - 说明：服务端可根据 view/listId/q 过滤；前端可再做轻量排序与展示
+- `POST /tasks` → `Task`
+- `PATCH /tasks/:id` → `Task`（可更新 name/remark/deadline/priority/completed/starred/listId）
+- `DELETE /tasks/:id` → `204`
 
-### 7. 用户体验
-- 支持键盘快捷键快速添加任务
-- 提供任务完成动画反馈
-- 响应式设计适配移动端
+### 错误约定
+- `401`：未登录或 token 无效
+- `403`：无权限访问资源
+- `404`：资源不存在
+- `422`：参数不合法（例如 name 为空）
+
+## 数据库映射（SQLite / MySQL 可迁移）
+
+推荐使用 ORM + migration（例如 Prisma）来实现：
+- SQLite 本地快速启动
+- 未来切换到 MySQL 时，通过 provider 与迁移文件平滑升级
+
+建议表：
+- `users`
+- `todo_lists`
+- `tasks`（外键：`user_id`、`list_id`，删除列表时级联删除 tasks）
+
+## 前端状态管理与联动（Zustand）
+
+前端以 store 作为唯一数据源，UI 通过 selectors 获取派生值：
+- 当前视图（智能分类或待办集）决定右侧标题与任务列表内容
+- 左侧计数由 tasks 派生（不单独存统计）
+- 搜索在当前视图结果内过滤（标题 + 备注）
+
+本地存储角色（前端）：
+- 保存 token/少量 UI 状态（例如最后选中的视图、搜索词）
+- tasks/lists 以服务端为准（可选：做本地缓存提升体验，但不作为权威来源）

@@ -25,7 +25,9 @@ describe('App', () => {
     expect(screen.getByText('测试任务')).toBeInTheDocument()
     expect(screen.getByTestId('stats-total')).toHaveTextContent('1')
 
-    await user.click(screen.getByRole('button', { name: '展开备注' }))
+    expect(screen.getByRole('button', { name: /第一行/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /第一行/ }))
     expect(screen.getByLabelText('备注内容')).toHaveValue('第一行\n第二行')
   })
 })

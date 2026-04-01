@@ -1,4 +1,4 @@
-import { memo, useId, useState } from 'react'
+import { memo, useLayoutEffect, useRef, useState } from 'react'
 
 import type { Task } from '../types'
 
@@ -21,9 +21,17 @@ function priorityMeta(priority: Task['priority']): { label: string; className: s
 }
 
 function TaskItemImpl({ task, onToggle, onDelete, onUpdateRemark }: TaskItemProps) {
-  const remarkId = useId()
-  const [remarkOpen, setRemarkOpen] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const [remarkEditing, setRemarkEditing] = useState(false)
   const [draftRemark, setDraftRemark] = useState(task.remark)
+
+  useLayoutEffect(() => {
+    if (!remarkEditing) return
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [remarkEditing, draftRemark])
 
   const pri = priorityMeta(task.priority)
 
@@ -50,6 +58,79 @@ function TaskItemImpl({ task, onToggle, onDelete, onUpdateRemark }: TaskItemProp
               {task.name}
             </div>
 
+            <div className="mt-1">
+              {remarkEditing ? (
+                <div className="space-y-2">
+                  <textarea
+                    ref={textareaRef}
+                    autoFocus
+                    rows={1}
+                    aria-label="备注内容"
+                    className="w-full resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs leading-5 text-zinc-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
+                    value={draftRemark}
+                    onChange={(e) => setDraftRemark(e.target.value)}
+                    placeholder="写点补充说明…"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        e.preventDefault()
+                        setDraftRemark(task.remark)
+                        setRemarkEditing(false)
+                        return
+                      }
+
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault()
+                        const next = draftRemark.trim()
+                        onUpdateRemark(task.id, next)
+                        setDraftRemark(next)
+                        setRemarkEditing(false)
+                      }
+                    }}
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200 hover:bg-zinc-100"
+                      onClick={() => {
+                        onUpdateRemark(task.id, '')
+                        setDraftRemark('')
+                      }}
+                    >
+                      清空
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                      onClick={() => {
+                        const next = draftRemark.trim()
+                        onUpdateRemark(task.id, next)
+                        setDraftRemark(next)
+                        setRemarkEditing(false)
+                      }}
+                    >
+                      保存
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={[
+                    'w-full rounded-md text-left text-xs leading-5 outline-none focus:ring-2 focus:ring-violet-200',
+                    task.remark.length > 0
+                      ? 'text-zinc-600 whitespace-pre-wrap break-words hover:text-zinc-800'
+                      : 'text-zinc-400 italic hover:text-zinc-500',
+                  ].join(' ')}
+                  onClick={() => {
+                    setDraftRemark(task.remark)
+                    setRemarkEditing(true)
+                  }}
+                >
+                  {task.remark.length > 0 ? task.remark : '点击添加备注…'}
+                </button>
+              )}
+            </div>
+
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
               <span
                 className={[
@@ -65,34 +146,11 @@ function TaskItemImpl({ task, onToggle, onDelete, onUpdateRemark }: TaskItemProp
               <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200">
                 截止：{task.deadline ?? '无截止时间'}
               </span>
-              {task.remark.length > 0 && (
-                <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">
-                  有备注
-                </span>
-              )}
             </div>
           </div>
         </div>
 
         <div className="shrink-0 space-x-2">
-          <button
-            type="button"
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-200"
-            onClick={() => {
-              setRemarkOpen((v) => {
-                const next = !v
-                if (next) setDraftRemark(task.remark)
-                return next
-              })
-            }}
-          >
-            {remarkOpen
-              ? '收起备注'
-              : task.remark.length === 0
-                ? '添加备注'
-                : '展开备注'}
-          </button>
-
           <button
             type="button"
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-200"
@@ -104,45 +162,6 @@ function TaskItemImpl({ task, onToggle, onDelete, onUpdateRemark }: TaskItemProp
           </button>
         </div>
       </div>
-
-      {remarkOpen && (
-        <div className="mt-3 rounded-lg bg-zinc-50 p-3">
-          <label className="text-xs font-medium text-zinc-900" htmlFor={remarkId}>
-            备注内容
-          </label>
-          <textarea
-            id={remarkId}
-            rows={3}
-            className="mt-1 w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
-            value={draftRemark}
-            onChange={(e) => setDraftRemark(e.target.value)}
-            placeholder="写点补充说明…"
-          />
-          <div className="mt-2 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200 hover:bg-zinc-100"
-              onClick={() => {
-                onUpdateRemark(task.id, '')
-                setDraftRemark('')
-              }}
-            >
-              清空
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
-              onClick={() => {
-                const next = draftRemark.trim()
-                onUpdateRemark(task.id, next)
-                setDraftRemark(next)
-              }}
-            >
-              保存
-            </button>
-          </div>
-        </div>
-      )}
     </li>
   )
 }
