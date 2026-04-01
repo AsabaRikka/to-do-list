@@ -27,6 +27,7 @@ describe('todoStore', () => {
       priority: 'medium',
       completed: false,
       createdAt: 1234567890,
+      remark: '',
     })
   })
 
@@ -53,6 +54,22 @@ describe('todoStore', () => {
     expect(store.getState().filter.category).toBeNull()
   })
 
+  it('updateTaskRemark updates and can clear remark', async () => {
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-remark' })
+
+    const store = createTodoStore({ storageKey: 'test.todoStore.updateRemark' })
+    await store.persist.rehydrate()
+
+    store.getState().addTask({ name: 'x' })
+    const taskId = store.getState().tasks[0]!.id
+
+    store.getState().updateTaskRemark(taskId, '  hello \n world  ')
+    expect(store.getState().tasks[0]!.remark).toBe('hello \n world')
+
+    store.getState().updateTaskRemark(taskId, '   ')
+    expect(store.getState().tasks[0]!.remark).toBe('')
+  })
+
   it('selectors filter, stats, categories behave as expected', () => {
     const tasks = [
       {
@@ -63,6 +80,7 @@ describe('todoStore', () => {
         priority: 'low' as const,
         completed: false,
         createdAt: 1,
+        remark: '',
       },
       {
         id: '2',
@@ -72,6 +90,7 @@ describe('todoStore', () => {
         priority: 'medium' as const,
         completed: true,
         createdAt: 2,
+        remark: '',
       },
       {
         id: '3',
@@ -81,6 +100,7 @@ describe('todoStore', () => {
         priority: 'high' as const,
         completed: true,
         createdAt: 3,
+        remark: '',
       },
     ]
 
@@ -108,6 +128,7 @@ describe('todoStore', () => {
         priority: 'low' as const,
         completed: false,
         createdAt: 1,
+        remark: '',
       },
       {
         id: 'b',
@@ -117,6 +138,7 @@ describe('todoStore', () => {
         priority: 'low' as const,
         completed: false,
         createdAt: 2,
+        remark: '',
       },
       {
         id: 'c',
@@ -126,6 +148,7 @@ describe('todoStore', () => {
         priority: 'low' as const,
         completed: false,
         createdAt: 3,
+        remark: '',
       },
       {
         id: 'd',
@@ -135,6 +158,7 @@ describe('todoStore', () => {
         priority: 'low' as const,
         completed: true,
         createdAt: 99,
+        remark: '',
       },
       {
         id: 'e',
@@ -144,6 +168,7 @@ describe('todoStore', () => {
         priority: 'low' as const,
         completed: false,
         createdAt: 10,
+        remark: '',
       },
       {
         id: 'f',
@@ -153,6 +178,7 @@ describe('todoStore', () => {
         priority: 'low' as const,
         completed: false,
         createdAt: 11,
+        remark: '',
       },
     ]
 
@@ -187,5 +213,54 @@ describe('todoStore', () => {
 
     expect(store2.getState().tasks).toHaveLength(1)
     expect(store2.getState().filter.status).toBe('completed')
+  })
+
+  it('rehydrates from version 1 state by defaulting remark', async () => {
+    const storageKey = 'test.todoStore.v1'
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        state: {
+          tasks: [
+            {
+              id: 't1',
+              name: 'old',
+              deadline: null,
+              category: '默认',
+              priority: 'medium',
+              completed: false,
+              createdAt: 1,
+            },
+          ],
+          filter: { status: 'all', category: null },
+        },
+        version: 1,
+      }),
+    )
+
+    const store = createTodoStore({ storageKey })
+    await store.persist.rehydrate()
+
+    expect(store.getState().tasks).toHaveLength(1)
+    expect(store.getState().tasks[0]!.remark).toBe('')
+  })
+
+  it('falls back to defaults for invalid persisted shape', async () => {
+    const storageKey = 'test.todoStore.bad'
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        state: { tasks: 'oops', filter: { status: 'all', category: null } },
+        version: 2,
+      }),
+    )
+
+    const store = createTodoStore({ storageKey })
+    await store.persist.rehydrate()
+
+    expect(store.getState().tasks).toEqual([])
+    expect(store.getState().filter).toEqual({ status: 'all', category: null })
   })
 })

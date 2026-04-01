@@ -21,6 +21,7 @@ export function TaskForm({ categories, onAddTask }: TaskFormProps) {
   const [deadline, setDeadline] = useState('')
   const [category, setCategory] = useState(DEFAULT_CATEGORY)
   const [priority, setPriority] = useState<TaskPriority>('medium')
+  const [remark, setRemark] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -39,12 +40,14 @@ export function TaskForm({ categories, onAddTask }: TaskFormProps) {
         deadline: deadline.trim().length > 0 ? deadline : null,
         category: category.trim().length > 0 ? category : undefined,
         priority,
+        remark,
       })
 
       setName('')
       setDeadline('')
       setCategory(DEFAULT_CATEGORY)
       setPriority('medium')
+      setRemark('')
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : '添加失败，请重试')
@@ -120,6 +123,20 @@ export function TaskForm({ categories, onAddTask }: TaskFormProps) {
               <option key={c} value={c} />
             ))}
           </datalist>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium text-zinc-900" htmlFor="task-remark">
+            备注
+          </label>
+          <textarea
+            id="task-remark"
+            rows={3}
+            className="mt-1 w-full resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            placeholder="可选：补充说明（支持多行）"
+          />
         </div>
       </div>
 

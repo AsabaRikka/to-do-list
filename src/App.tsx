@@ -15,6 +15,7 @@ function App() {
   const deleteTask = useTodoStore((state) => state.deleteTask)
   const setStatus = useTodoStore((state) => state.setStatus)
   const setCategory = useTodoStore((state) => state.setCategory)
+  const updateTaskRemark = useTodoStore((state) => state.updateTaskRemark)
 
   const categories = useMemo(() => selectCategories(tasks), [tasks])
   const filteredTasks = useMemo(
@@ -67,6 +68,7 @@ function App() {
                 tasks={filteredTasks}
                 onToggle={toggleTask}
                 onDelete={deleteTask}
+                onUpdateRemark={updateTaskRemark}
                 emptyState={emptyState}
                 onResetFilter={
                   emptyState === 'noResults' ? handleResetFilter : undefined

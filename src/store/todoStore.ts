@@ -3,9 +3,9 @@ import type { PersistStorage } from 'zustand/middleware'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { shallow } from 'zustand/shallow'
 
-import type { Filter, FilterStatus, NewTaskInput, Task } from '../types'
-import { DEFAULT_FILTER } from '../types'
-import { buildTask } from '../utils/taskModel'
+import type { Filter, FilterStatus, NewTaskInput, Task, TaskPriority } from '../types'
+import { DEFAULT_FILTER, FILTER_STATUSES, TASK_PRIORITIES } from '../types'
+import { buildTask, normalizeRemark } from '../utils/taskModel'
 
 export type TodoState = {
   tasks: Task[]
@@ -16,6 +16,7 @@ export type TodoActions = {
   addTask: (input: NewTaskInput) => void
   toggleTask: (id: string) => void
   deleteTask: (id: string) => void
+  updateTaskRemark: (id: string, remark: string) => void
   clearCompleted: () => void
   setStatus: (status: FilterStatus) => void
   setCategory: (category: string | null) => void
@@ -94,6 +95,70 @@ export function createTodoStore(options: CreateTodoStoreOptions = {}) {
   const storage =
     options.storage ?? createJSONStorage(() => localStorage as Storage)
 
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+
+  const toTaskPriority = (value: unknown): TaskPriority => {
+    return TASK_PRIORITIES.includes(value as TaskPriority)
+      ? (value as TaskPriority)
+      : 'medium'
+  }
+
+  const toTask = (value: unknown): Task | null => {
+    if (!isRecord(value)) return null
+
+    const id = typeof value.id === 'string' ? value.id : null
+    const name = typeof value.name === 'string' ? value.name : null
+    const category = typeof value.category === 'string' ? value.category : null
+    const completed = typeof value.completed === 'boolean' ? value.completed : null
+    const createdAt = typeof value.createdAt === 'number' ? value.createdAt : null
+
+    if (!id || !name || !category || completed === null || createdAt === null) {
+      return null
+    }
+
+    const deadline =
+      value.deadline === null || typeof value.deadline === 'string'
+        ? (value.deadline as string | null)
+        : null
+
+    const remark =
+      typeof value.remark === 'string' ? normalizeRemark(value.remark) : ''
+
+    return {
+      id,
+      name,
+      deadline,
+      category,
+      priority: toTaskPriority(value.priority),
+      completed,
+      createdAt,
+      remark,
+    }
+  }
+
+  const toFilter = (value: unknown): Filter => {
+    if (!isRecord(value)) return DEFAULT_FILTER
+    const status = FILTER_STATUSES.includes(value.status as FilterStatus)
+      ? (value.status as FilterStatus)
+      : DEFAULT_FILTER.status
+    const category =
+      value.category === null || typeof value.category === 'string'
+        ? (value.category as string | null)
+        : DEFAULT_FILTER.category
+    return { status, category }
+  }
+
+  const toPersisted = (
+    value: unknown,
+  ): Pick<TodoStore, 'tasks' | 'filter'> | null => {
+    if (!isRecord(value)) return null
+    if (!Array.isArray(value.tasks)) return null
+    const tasks = value.tasks.map(toTask).filter((t): t is Task => t !== null)
+    const filter = toFilter(value.filter)
+    return { tasks, filter }
+  }
+
   return create<TodoStore>()(
     persist(
       (set) => ({
@@ -121,6 +186,20 @@ export function createTodoStore(options: CreateTodoStoreOptions = {}) {
           set((state) => {
             const tasks = state.tasks.filter((task) => task.id !== id)
             return tasks.length === state.tasks.length ? state : { tasks }
+          })
+        },
+
+        updateTaskRemark: (id, remark) => {
+          const normalized = normalizeRemark(remark)
+          set((state) => {
+            let updated = false
+            const tasks = state.tasks.map((task) => {
+              if (task.id !== id) return task
+              if (task.remark === normalized) return task
+              updated = true
+              return { ...task, remark: normalized }
+            })
+            return updated ? { tasks } : state
           })
         },
 
@@ -156,9 +235,22 @@ export function createTodoStore(options: CreateTodoStoreOptions = {}) {
       }),
       {
         name: storageKey,
-        version: 1,
+        version: 2,
         storage,
         partialize: (state) => ({ tasks: state.tasks, filter: state.filter }),
+        migrate: (persistedState, persistedVersion) => {
+          if (persistedVersion === 1) {
+            const v1 = toPersisted(persistedState)
+            return v1 ?? { tasks: [], filter: DEFAULT_FILTER }
+          }
+
+          const v2 = toPersisted(persistedState)
+          return v2 ?? { tasks: [], filter: DEFAULT_FILTER }
+        },
+        merge: (persistedState, currentState) => {
+          const safe = toPersisted(persistedState)
+          return safe ? { ...currentState, ...safe } : currentState
+        },
       },
     ),
   )

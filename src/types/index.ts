@@ -12,6 +12,7 @@ export interface Task {
   priority: TaskPriority
   completed: boolean
   createdAt: number
+  remark: string
 }
 
 export interface Filter {
@@ -28,4 +29,5 @@ export interface NewTaskInput {
   deadline?: string | null
   category?: string
   priority?: TaskPriority
+  remark?: string
 }

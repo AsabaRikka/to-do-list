@@ -29,6 +29,11 @@ export function normalizePriority(value?: TaskPriority | null): TaskPriority {
     : DEFAULT_PRIORITY
 }
 
+export function normalizeRemark(value?: string | null): string {
+  const remark = (value ?? '').trim()
+  return remark.length > 0 ? remark : ''
+}
+
 export function buildTask(input: NewTaskInput): Task {
   const name = input.name.trim()
   if (name.length === 0) {
@@ -43,5 +48,6 @@ export function buildTask(input: NewTaskInput): Task {
     priority: normalizePriority(input.priority),
     completed: false,
     createdAt: Date.now(),
+    remark: normalizeRemark(input.remark),
   }
 }

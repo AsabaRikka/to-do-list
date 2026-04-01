@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { buildTask, normalizeCategory, normalizeDeadline } from './taskModel'
+import {
+  buildTask,
+  normalizeCategory,
+  normalizeDeadline,
+  normalizeRemark,
+} from './taskModel'
 
 describe('taskModel', () => {
   describe('normalizeCategory', () => {
@@ -42,7 +47,20 @@ describe('taskModel', () => {
         priority: 'medium',
         completed: false,
         createdAt: 1234567890,
+        remark: '',
       })
+    })
+  })
+
+  describe('normalizeRemark', () => {
+    it('defaults to empty string for empty input', () => {
+      expect(normalizeRemark()).toBe('')
+      expect(normalizeRemark('')).toBe('')
+      expect(normalizeRemark('   ')).toBe('')
+    })
+
+    it('trims outer whitespace but keeps inner newlines', () => {
+      expect(normalizeRemark('  第一行\n第二行  ')).toBe('第一行\n第二行')
     })
   })
 })

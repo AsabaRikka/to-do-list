@@ -6,6 +6,7 @@ type TaskListProps = {
   tasks: Task[]
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  onUpdateRemark: (id: string, remark: string) => void
   emptyState: 'noTasks' | 'noResults'
   onResetFilter?: () => void
 }
@@ -14,6 +15,7 @@ export function TaskList({
   tasks,
   onToggle,
   onDelete,
+  onUpdateRemark,
   emptyState,
   onResetFilter,
 }: TaskListProps) {
@@ -48,9 +50,9 @@ export function TaskList({
           task={task}
           onToggle={onToggle}
           onDelete={onDelete}
+          onUpdateRemark={onUpdateRemark}
         />
       ))}
     </ul>
   )
 }
-
