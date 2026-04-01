@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 
 import type { NewTaskInput, TaskPriority } from '../types'
+import { DEFAULT_CATEGORY } from '../types'
 
 type TaskFormProps = {
   categories: string[]
@@ -18,7 +19,7 @@ export function TaskForm({ categories, onAddTask }: TaskFormProps) {
 
   const [name, setName] = useState('')
   const [deadline, setDeadline] = useState('')
-  const [category, setCategory] = useState('')
+  const [category, setCategory] = useState(DEFAULT_CATEGORY)
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +43,7 @@ export function TaskForm({ categories, onAddTask }: TaskFormProps) {
 
       setName('')
       setDeadline('')
-      setCategory('')
+      setCategory(DEFAULT_CATEGORY)
       setPriority('medium')
       setError(null)
     } catch (e) {
@@ -136,4 +137,3 @@ export function TaskForm({ categories, onAddTask }: TaskFormProps) {
     </form>
   )
 }
-

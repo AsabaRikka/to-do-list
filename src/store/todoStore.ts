@@ -27,12 +27,36 @@ export function selectFilteredTasks(tasks: Task[], filter: Filter): Task[] {
   const hasStatusFilter = filter.status !== 'all'
   const hasCategoryFilter = filter.category !== null
 
-  if (!hasStatusFilter && !hasCategoryFilter) return tasks
+  const base =
+    !hasStatusFilter && !hasCategoryFilter
+      ? tasks
+      : tasks.filter((task) => {
+          if (hasCategoryFilter && task.category !== filter.category) return false
+          if (!hasStatusFilter) return true
+          return filter.status === 'completed' ? task.completed : !task.completed
+        })
 
-  return tasks.filter((task) => {
-    if (hasCategoryFilter && task.category !== filter.category) return false
-    if (!hasStatusFilter) return true
-    return filter.status === 'completed' ? task.completed : !task.completed
+  const deadlineTime = (value: string | null): number | null => {
+    if (value === null) return null
+    const t = new Date(value).getTime()
+    return Number.isNaN(t) ? null : t
+  }
+
+  return base.slice().sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1
+
+    const aDeadline = deadlineTime(a.deadline)
+    const bDeadline = deadlineTime(b.deadline)
+
+    if (aDeadline === null && bDeadline !== null) return 1
+    if (aDeadline !== null && bDeadline === null) return -1
+    if (aDeadline !== null && bDeadline !== null && aDeadline !== bDeadline) {
+      return aDeadline - bDeadline
+    }
+
+    if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt
+
+    return a.id.localeCompare(b.id)
   })
 }
 

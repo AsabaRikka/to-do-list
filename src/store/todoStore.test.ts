@@ -98,6 +98,76 @@ describe('todoStore', () => {
     expect(selectCategories(tasks)).toEqual(['工作', '生活'].sort((a, b) => a.localeCompare(b)))
   })
 
+  it('selectFilteredTasks sorts by completion, deadline, createdAt', () => {
+    const tasks = [
+      {
+        id: 'a',
+        name: 'no-deadline-old',
+        deadline: null,
+        category: '默认',
+        priority: 'low' as const,
+        completed: false,
+        createdAt: 1,
+      },
+      {
+        id: 'b',
+        name: 'deadline-later',
+        deadline: '2026-04-02T10:00',
+        category: '默认',
+        priority: 'low' as const,
+        completed: false,
+        createdAt: 2,
+      },
+      {
+        id: 'c',
+        name: 'deadline-sooner',
+        deadline: '2026-04-01T10:00',
+        category: '默认',
+        priority: 'low' as const,
+        completed: false,
+        createdAt: 3,
+      },
+      {
+        id: 'd',
+        name: 'completed-new',
+        deadline: '2026-04-01T09:00',
+        category: '默认',
+        priority: 'low' as const,
+        completed: true,
+        createdAt: 99,
+      },
+      {
+        id: 'e',
+        name: 'bad-deadline-newer',
+        deadline: 'not-a-date',
+        category: '默认',
+        priority: 'low' as const,
+        completed: false,
+        createdAt: 10,
+      },
+      {
+        id: 'f',
+        name: 'no-deadline-new',
+        deadline: null,
+        category: '默认',
+        priority: 'low' as const,
+        completed: false,
+        createdAt: 11,
+      },
+    ]
+
+    const sorted = selectFilteredTasks(tasks, { status: 'all', category: null })
+
+    expect(sorted.map((t) => t.id)).toEqual([
+      'c', // sooner deadline
+      'b', // later deadline
+      'f', // no deadline, newer createdAt
+      'e', // bad deadline treated as null, older than f
+      'a', // no deadline, oldest
+      'd', // completed always last
+    ])
+  })
+
   it('persists tasks and filter to localStorage and can rehydrate', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(111)
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-111' })
