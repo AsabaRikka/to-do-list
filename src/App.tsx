@@ -41,35 +41,39 @@ function App() {
           </p>
         </header>
 
-        <main className="mt-4 grid gap-4 md:grid-cols-2 md:grid-rows-[auto_1fr] md:items-start">
-          <section className="md:col-start-1 md:row-start-1">
-            <Stats stats={stats} />
-          </section>
+        <main className="mt-4 grid gap-4 md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:items-start md:gap-5">
+          <div className="contents md:flex md:flex-col md:gap-4">
+            <section className="order-1 md:order-none">
+              <Stats stats={stats} />
+            </section>
 
-          <section className="md:col-start-2 md:row-start-1">
-            <TaskForm categories={categories} onAddTask={addTask} />
-          </section>
+            <section className="order-3 md:order-none">
+              <FilterBar
+                filter={filter}
+                categories={categories}
+                onSetStatus={setStatus}
+                onSetCategory={setCategory}
+              />
+            </section>
+          </div>
 
-          <section className="md:col-start-1 md:row-start-2">
-            <FilterBar
-              filter={filter}
-              categories={categories}
-              onSetStatus={setStatus}
-              onSetCategory={setCategory}
-            />
-          </section>
+          <div className="contents md:flex md:flex-col md:gap-4">
+            <section className="order-2 md:order-none">
+              <TaskForm categories={categories} onAddTask={addTask} />
+            </section>
 
-          <section className="md:col-start-2 md:row-start-2">
-            <TaskList
-              tasks={filteredTasks}
-              onToggle={toggleTask}
-              onDelete={deleteTask}
-              emptyState={emptyState}
-              onResetFilter={
-                emptyState === 'noResults' ? handleResetFilter : undefined
-              }
-            />
-          </section>
+            <section className="order-4 md:order-none">
+              <TaskList
+                tasks={filteredTasks}
+                onToggle={toggleTask}
+                onDelete={deleteTask}
+                emptyState={emptyState}
+                onResetFilter={
+                  emptyState === 'noResults' ? handleResetFilter : undefined
+                }
+              />
+            </section>
+          </div>
         </main>
       </div>
     </div>
