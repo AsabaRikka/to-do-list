@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   Sun, 
   Star, 
@@ -8,13 +8,18 @@ import {
   CheckCircle2, 
   Circle,
   Menu,
-  Search
+  Search,
+  Trash2
 } from 'lucide-react'
 import useTodoStore from './store'
 
 function App() {
-  const { tasks, addTask, toggleTask, toggleImportant } = useTodoStore()
+  const { tasks, fetchTasks, addTask, toggleTask, toggleImportant, deleteTask, loading, error } = useTodoStore()
   const [inputValue, setInputValue] = useState('')
+
+  useEffect(() => {
+    fetchTasks()
+  }, [])
 
   const handleAddTask = (e) => {
     e.preventDefault()
@@ -60,6 +65,13 @@ function App() {
 
         {/* Task List */}
         <div className="flex-1 overflow-y-auto px-8 space-y-2">
+          {loading && <div className="text-gray-400 py-4">正在加载任务...</div>}
+          {error && <div className="text-red-400 py-4">{error}</div>}
+          {!loading && tasks.length === 0 && (
+            <div className="text-gray-400 py-10 text-center">
+              这里还没有任务，开始添加一个吧！
+            </div>
+          )}
           {tasks.map(task => (
             <div 
               key={task.id}
@@ -75,12 +87,20 @@ function App() {
               <span className={`flex-1 ${task.is_completed ? 'line-through text-gray-400' : ''}`}>
                 {task.title}
               </span>
-              <button onClick={() => toggleImportant(task.id)}>
-                <Star 
-                  size={18} 
-                  className={task.is_important ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-gray-400'} 
-                />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => deleteTask(task.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-all text-red-400"
+                >
+                  <Trash2 size={16} />
+                </button>
+                <button onClick={() => toggleImportant(task.id)}>
+                  <Star 
+                    size={18} 
+                    className={task.is_important ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-gray-400'} 
+                  />
+                </button>
+              </div>
             </div>
           ))}
         </div>
