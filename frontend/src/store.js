@@ -3,6 +3,7 @@ import { taskApi } from './api'
 
 const useTodoStore = create((set, get) => ({
   tasks: [],
+  lists: [],
   loading: false,
   error: null,
 
@@ -16,14 +17,47 @@ const useTodoStore = create((set, get) => ({
     }
   },
 
-  addTask: async (title) => {
+  fetchLists: async () => {
     try {
-      const response = await taskApi.createTask({ title })
+      const response = await taskApi.getLists()
+      set({ lists: response.data })
+    } catch (err) {
+      set({ error: '获取列表失败' })
+    }
+  },
+
+  addTask: async (title, listId = null) => {
+    try {
+      const response = await taskApi.createTask({ title, todo_list_id: listId })
       set((state) => ({
         tasks: [...state.tasks, response.data]
       }))
     } catch (err) {
       set({ error: '添加任务失败' })
+    }
+  },
+
+  addList: async (name) => {
+    try {
+      const response = await taskApi.createList({ name })
+      set((state) => ({
+        lists: [...state.lists, response.data]
+      }))
+      return response.data
+    } catch (err) {
+      set({ error: '创建列表失败' })
+    }
+  },
+
+  deleteList: async (id) => {
+    try {
+      await taskApi.deleteList(id)
+      set((state) => ({
+        lists: state.lists.filter(l => l.id !== id),
+        tasks: state.tasks.filter(t => t.todo_list_id !== id)
+      }))
+    } catch (err) {
+      set({ error: '删除列表失败' })
     }
   },
 

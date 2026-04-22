@@ -15,6 +15,11 @@ export const taskApi = {
   createSubTask: (taskId, subtask) => api.post(`/tasks/${taskId}/subtasks/`, subtask),
   updateSubTask: (id, data) => api.patch(`/subtasks/${id}`, data),
   deleteSubTask: (id) => api.delete(`/subtasks/${id}`),
+  // Lists
+  getLists: () => api.get('/lists/'),
+  createList: (list) => api.post('/lists/', list),
+  updateList: (id, data) => api.patch(`/lists/${id}`, data),
+  deleteList: (id) => api.delete(`/lists/${id}`),
 }
 
 export default api

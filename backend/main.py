@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select, create_engine, SQLModel
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from models import Task, User, SubTask
+from models import Task, User, SubTask, TodoList
 
 app = FastAPI(title="To-Do List API", version="0.1.0")
 
@@ -42,6 +42,48 @@ app.add_middleware(
 async def root():
     return {"message": "Welcome to To-Do List API"}
 
+# TodoList CRUD
+@app.post("/lists/", response_model=TodoList)
+def create_list(todo_list: TodoList, session: Session = Depends(get_session)):
+    session.add(todo_list)
+    session.commit()
+    session.refresh(todo_list)
+    return todo_list
+
+@app.get("/lists/", response_model=List[TodoList])
+def read_lists(session: Session = Depends(get_session)):
+    lists = session.exec(select(TodoList)).all()
+    return lists
+
+@app.get("/lists/{list_id}", response_model=TodoList)
+def read_list(list_id: int, session: Session = Depends(get_session)):
+    todo_list = session.get(TodoList, list_id)
+    if not todo_list:
+        raise HTTPException(status_code=404, detail="List not found")
+    return todo_list
+
+@app.patch("/lists/{list_id}", response_model=TodoList)
+def update_list(list_id: int, list_data: dict = Body(...), session: Session = Depends(get_session)):
+    db_list = session.get(TodoList, list_id)
+    if not db_list:
+        raise HTTPException(status_code=404, detail="List not found")
+    for key, value in list_data.items():
+        if hasattr(db_list, key):
+            setattr(db_list, key, value)
+    session.add(db_list)
+    session.commit()
+    session.refresh(db_list)
+    return db_list
+
+@app.delete("/lists/{list_id}")
+def delete_list(list_id: int, session: Session = Depends(get_session)):
+    db_list = session.get(TodoList, list_id)
+    if not db_list:
+        raise HTTPException(status_code=404, detail="List not found")
+    session.delete(db_list)
+    session.commit()
+    return {"ok": True}
+
 # Task CRUD
 @app.post("/tasks/", response_model=Task)
 def create_task(task: Task, session: Session = Depends(get_session)):
@@ -54,13 +96,16 @@ def create_task(task: Task, session: Session = Depends(get_session)):
 def read_tasks(
     session: Session = Depends(get_session),
     is_completed: Optional[bool] = None,
-    is_important: Optional[bool] = None
+    is_important: Optional[bool] = None,
+    todo_list_id: Optional[int] = None
 ):
     statement = select(Task).options(selectinload(Task.subtasks))
     if is_completed is not None:
         statement = statement.where(Task.is_completed == is_completed)
     if is_important is not None:
         statement = statement.where(Task.is_important == is_important)
+    if todo_list_id is not None:
+        statement = statement.where(Task.todo_list_id == todo_list_id)
     tasks = session.exec(statement).all()
     return tasks
 

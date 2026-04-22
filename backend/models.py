@@ -10,6 +10,15 @@ class User(SQLModel, table=True):
     
     tasks: List["Task"] = Relationship(back_populates="user")
 
+class TodoList(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    icon: Optional[str] = "ListTodo"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True)
+    tasks: List["Task"] = Relationship(back_populates="todo_list")
+
 class Task(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
@@ -21,6 +30,9 @@ class Task(SQLModel, table=True):
     
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True)
     user: Optional[User] = Relationship(back_populates="tasks")
+    
+    todo_list_id: Optional[int] = Field(default=None, foreign_key="todolist.id", nullable=True)
+    todo_list: Optional[TodoList] = Relationship(back_populates="tasks")
     
     subtasks: List["SubTask"] = Relationship(back_populates="task")
 
