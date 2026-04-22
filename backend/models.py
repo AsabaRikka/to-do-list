@@ -19,7 +19,7 @@ class Task(SQLModel, table=True):
     reminder_at: Optional[datetime] = None
     notes: Optional[str] = None
     
-    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True)
     user: Optional[User] = Relationship(back_populates="tasks")
     
     subtasks: List["SubTask"] = Relationship(back_populates="task")
