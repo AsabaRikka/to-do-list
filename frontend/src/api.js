@@ -6,6 +6,29 @@ const api = axios.create({
   baseURL: API_URL,
 })
 
+// 添加请求拦截器来附带 Token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+export const authApi = {
+  login: (email, password) => {
+    const formData = new FormData()
+    formData.append('username', email)
+    formData.append('password', password)
+    return api.post('/token', formData)
+  },
+  register: (email, password) => api.post('/register', { email, hashed_password: password }),
+  getMe: () => api.get('/users/me'),
+  // Admin
+  getAllUsers: () => api.get('/admin/users'),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+}
+
 export const taskApi = {
   getTasks: () => api.get('/tasks/'),
   createTask: (task) => api.post('/tasks/', task),

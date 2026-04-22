@@ -14,12 +14,26 @@ import {
   Bell,
   Clock,
   ChevronRight,
-  ListTodo
+  ListTodo,
+  LogOut,
+  User as UserIcon,
+  ShieldCheck,
+  Users
 } from 'lucide-react'
 import useTodoStore from './store'
 
 function App() {
-  const { tasks, lists, fetchTasks, fetchLists, addTask, addList, deleteList, toggleTask, toggleImportant, deleteTask, updateTask, addSubTask, toggleSubTask, deleteSubTask, loading, error } = useTodoStore()
+  const { 
+    tasks, lists, isAuthenticated, isAdmin, allUsers, login, register, logout, 
+    fetchTasks, fetchLists, fetchAdminData, deleteUser, addTask, addList, deleteList, 
+    toggleTask, toggleImportant, deleteTask, updateTask, 
+    addSubTask, toggleSubTask, deleteSubTask, loading, error 
+  } = useTodoStore()
+  
+  const [isLoginView, setIsLoginView] = useState(true)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [inputValue, setInputValue] = useState('')
   const [activeFilter, setActiveFilter] = useState('all') // 'all', 'important', 'planned', or list ID
   const [selectedTaskId, setSelectedTaskId] = useState(null)
@@ -29,9 +43,86 @@ function App() {
   const selectedTask = tasks.find(t => t.id === selectedTaskId)
 
   useEffect(() => {
-    fetchTasks()
-    fetchLists()
-  }, [])
+    if (isAuthenticated) {
+      fetchTasks()
+      fetchLists()
+      if (isAdmin) fetchAdminData()
+    }
+  }, [isAuthenticated, isAdmin])
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg border border-gray-200">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-ms-blue rounded-xl flex items-center justify-center text-white mb-4">
+              <CheckCircle2 size={32} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">Microsoft To Do</h1>
+            <p className="text-gray-500">登录以同步您的任务</p>
+          </div>
+
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault()
+              try {
+                if (isLoginView) {
+                  await login(email, password)
+                } else {
+                  await register(email, password)
+                  setIsLoginView(true)
+                  alert('注册成功，请登录')
+                }
+              } catch (err) {
+                // Error handled by store
+              }
+            }}
+            className="space-y-4"
+          >
+            {error && <div className="p-3 bg-red-50 text-red-500 text-sm rounded border border-red-100">{error}</div>}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">邮箱地址</label>
+              <input 
+                required
+                type="email" 
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-ms-blue focus:border-transparent outline-none transition-all"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">密码</label>
+              <input 
+                required
+                type="password" 
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-ms-blue focus:border-transparent outline-none transition-all"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <button 
+              disabled={loading}
+              className="w-full bg-ms-blue text-white py-2 rounded font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50"
+            >
+              {loading ? '正在处理...' : (isLoginView ? '登录' : '注册')}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button 
+              onClick={() => {
+                setIsLoginView(!isLoginView)
+                useTodoStore.setState({ error: null })
+              }}
+              className="text-sm text-ms-blue hover:underline"
+            >
+              {isLoginView ? '没有账号？立即注册' : '已有账号？返回登录'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'important') return task.is_important
@@ -94,30 +185,54 @@ function App() {
           <SidebarItem 
             icon={<Sun size={18} />} 
             label="我的一天" 
-            active={activeFilter === 'all'} 
-            onClick={() => setActiveFilter('all')}
+            active={activeFilter === 'all' && !showAdminPanel} 
+            onClick={() => {
+              setActiveFilter('all')
+              setShowAdminPanel(false)
+            }}
           />
           <SidebarItem 
             icon={<Star size={18} />} 
             label="重要" 
-            active={activeFilter === 'important'} 
+            active={activeFilter === 'important' && !showAdminPanel} 
             count={importantCount > 0 ? importantCount : undefined}
-            onClick={() => setActiveFilter('important')}
+            onClick={() => {
+              setActiveFilter('important')
+              setShowAdminPanel(false)
+            }}
           />
           <SidebarItem 
             icon={<Calendar size={18} />} 
             label="计划内" 
-            active={activeFilter === 'planned'} 
+            active={activeFilter === 'planned' && !showAdminPanel} 
             count={plannedCount > 0 ? plannedCount : undefined}
-            onClick={() => setActiveFilter('planned')}
+            onClick={() => {
+              setActiveFilter('planned')
+              setShowAdminPanel(false)
+            }}
           />
           <SidebarItem 
             icon={<Home size={18} />} 
             label="任务" 
-            active={activeFilter === 'tasks'} 
+            active={activeFilter === 'tasks' && !showAdminPanel} 
             count={taskCount > 0 ? taskCount : undefined}
-            onClick={() => setActiveFilter('tasks')}
+            onClick={() => {
+              setActiveFilter('tasks')
+              setShowAdminPanel(false)
+            }}
           />
+
+          {isAdmin && (
+            <>
+              <div className="my-4 border-t border-gray-200"></div>
+              <SidebarItem 
+                icon={<ShieldCheck size={18} className="text-red-500" />} 
+                label="用户管理" 
+                active={showAdminPanel}
+                onClick={() => setShowAdminPanel(true)}
+              />
+            </>
+          )}
 
           <div className="my-4 border-t border-gray-200"></div>
 
@@ -127,8 +242,11 @@ function App() {
               <SidebarItem 
                 icon={<ListTodo size={18} />} 
                 label={list.name} 
-                active={activeFilter === list.id} 
-                onClick={() => setActiveFilter(list.id)}
+                active={activeFilter === list.id && !showAdminPanel} 
+                onClick={() => {
+                  setActiveFilter(list.id)
+                  setShowAdminPanel(false)
+                }}
               />
               <button 
                 onClick={(e) => {
@@ -142,6 +260,16 @@ function App() {
               </button>
             </div>
           ))}
+        </div>
+
+        <div className="p-2 border-t border-gray-200">
+          <button 
+            onClick={logout}
+            className="flex items-center gap-3 px-3 py-2 w-full rounded hover:bg-red-50 text-red-500 transition-colors text-sm font-medium"
+          >
+            <LogOut size={18} />
+            <span>退出登录</span>
+          </button>
         </div>
 
         <div className="p-4 border-t border-gray-200 bg-white">
@@ -172,116 +300,126 @@ function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden transition-colors duration-500 bg-opacity-5">
-        {/* Header */}
-        <div className="p-8 pb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2 text-ms-blue">
-              {currentListName()}
-            </h1>
-            <p className="text-gray-500 text-sm">{new Date().toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-          </div>
-          {typeof activeFilter === 'number' && (
-            <button 
-              onClick={() => {
-                deleteList(activeFilter)
-                setActiveFilter('all')
-              }}
-              className="p-2 hover:bg-red-50 rounded text-red-400 flex items-center gap-2 text-sm"
-            >
-              <Trash2 size={18} />
-              <span>删除列表</span>
-            </button>
-          )}
-        </div>
-
-        {/* Task List */}
-        <div className="flex-1 overflow-y-auto px-8 space-y-2">
-          {loading && <div className="text-gray-400 py-4">正在加载任务...</div>}
-          {error && <div className="text-red-400 py-4">{error}</div>}
-          {!loading && tasks.length === 0 && (
-            <div className="text-gray-400 py-10 text-center">
-              这里还没有任务，开始添加一个吧！
+        {showAdminPanel ? (
+          <AdminPanel 
+            users={allUsers} 
+            onDeleteUser={deleteUser} 
+            loading={loading}
+          />
+        ) : (
+          <>
+            {/* Header */}
+            <div className="p-8 pb-4 flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2 text-ms-blue">
+                  {currentListName()}
+                </h1>
+                <p className="text-gray-500 text-sm">{new Date().toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+              </div>
+              {typeof activeFilter === 'number' && (
+                <button 
+                  onClick={() => {
+                    deleteList(activeFilter)
+                    setActiveFilter('all')
+                  }}
+                  className="p-2 hover:bg-red-50 rounded text-red-400 flex items-center gap-2 text-sm"
+                >
+                  <Trash2 size={18} />
+                  <span>删除列表</span>
+                </button>
+              )}
             </div>
-          )}
-          {filteredTasks.map(task => (
-            <div 
-              key={task.id}
-              onClick={() => setSelectedTaskId(task.id)}
-              className={`flex items-center gap-3 p-4 bg-white border border-gray-100 rounded shadow-sm hover:bg-gray-50 transition-colors group cursor-pointer ${selectedTaskId === task.id ? 'bg-blue-50/50 border-blue-100' : ''}`}
-            >
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleTask(task.id)
-                }}
-              >
-                {task.is_completed ? (
-                  <CheckCircle2 size={20} className="text-ms-blue" />
-                ) : (
-                  <Circle size={20} className="text-gray-300 group-hover:text-gray-400" />
-                )}
-              </button>
-              <div className={`flex-1 ${task.is_completed ? 'line-through text-gray-400' : ''}`}>
-                <div className="font-medium text-sm">{task.title}</div>
-                <div className="flex items-center gap-3 mt-0.5">
-                  {task.subtasks?.length > 0 && (
-                    <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <span>
-                        {task.subtasks.filter(s => s.is_completed).length} / {task.subtasks.length}
-                      </span>
-                    </div>
-                  )}
-                  {task.due_date && (
-                    <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <Calendar size={10} />
-                      <span>{new Date(task.due_date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</span>
-                    </div>
-                  )}
+
+            {/* Task List */}
+            <div className="flex-1 overflow-y-auto px-8 space-y-2">
+              {loading && <div className="text-gray-400 py-4">正在加载任务...</div>}
+              {error && <div className="text-red-400 py-4">{error}</div>}
+              {!loading && filteredTasks.length === 0 && (
+                <div className="text-gray-400 py-10 text-center">
+                  这里还没有任务，开始添加一个吧！
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    deleteTask(task.id)
-                    if (selectedTaskId === task.id) setSelectedTaskId(null)
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-all text-red-400"
+              )}
+              {filteredTasks.map(task => (
+                <div 
+                  key={task.id}
+                  onClick={() => setSelectedTaskId(task.id)}
+                  className={`flex items-center gap-3 p-4 bg-white border border-gray-100 rounded shadow-sm hover:bg-gray-50 transition-colors group cursor-pointer ${selectedTaskId === task.id ? 'bg-blue-50/50 border-blue-100' : ''}`}
                 >
-                  <Trash2 size={16} />
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleImportant(task.id)
-                  }}
-                >
-                  <Star 
-                    size={18} 
-                    className={task.is_important ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-gray-400'} 
-                  />
-                </button>
-              </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleTask(task.id)
+                    }}
+                  >
+                    {task.is_completed ? (
+                      <CheckCircle2 size={20} className="text-ms-blue" />
+                    ) : (
+                      <Circle size={20} className="text-gray-300 group-hover:text-gray-400" />
+                    )}
+                  </button>
+                  <div className={`flex-1 ${task.is_completed ? 'line-through text-gray-400' : ''}`}>
+                    <div className="font-medium text-sm">{task.title}</div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {task.subtasks?.length > 0 && (
+                        <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <span>
+                            {task.subtasks.filter(s => s.is_completed).length} / {task.subtasks.length}
+                          </span>
+                        </div>
+                      )}
+                      {task.due_date && (
+                        <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <Calendar size={10} />
+                          <span>{new Date(task.due_date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteTask(task.id)
+                        if (selectedTaskId === task.id) setSelectedTaskId(null)
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-all text-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleImportant(task.id)
+                      }}
+                    >
+                      <Star 
+                        size={18} 
+                        className={task.is_important ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-gray-400'} 
+                      />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Add Task Input */}
-        <div className="p-8">
-          <form 
-            onSubmit={handleAddTask}
-            className="flex items-center gap-3 p-4 bg-gray-50 rounded border border-gray-200 focus-within:border-ms-blue transition-colors"
-          >
-            <Plus size={20} className="text-ms-blue" />
-            <input 
-              type="text" 
-              placeholder="添加任务"
-              className="bg-transparent border-none outline-none flex-1 text-gray-700 placeholder-gray-400"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-            />
-          </form>
-        </div>
+            {/* Add Task Input */}
+            <div className="p-8">
+              <form 
+                onSubmit={handleAddTask}
+                className="flex items-center gap-3 p-4 bg-white rounded border border-gray-200 focus-within:border-ms-blue transition-colors shadow-sm"
+              >
+                <Plus size={20} className="text-ms-blue" />
+                <input 
+                  type="text" 
+                  placeholder="添加任务"
+                  className="bg-transparent border-none outline-none flex-1 text-gray-700 placeholder-gray-400"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                />
+              </form>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Detail Sidebar */}
@@ -465,6 +603,74 @@ function DetailOption({ icon, label }) {
       {icon}
       <span>{label}</span>
     </button>
+  )
+}
+
+function AdminPanel({ users, onDeleteUser, loading }) {
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-white">
+      <div className="p-8 pb-4">
+        <h1 className="text-2xl font-bold flex items-center gap-2 text-red-600">
+          <ShieldCheck size={28} />
+          用户管理 (管理员)
+        </h1>
+        <p className="text-gray-500 text-sm">查看和管理系统内所有注册用户</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-8 py-4">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">ID</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">邮箱</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">注册时间</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">角色</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {users.map(user => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 text-sm text-gray-500">{user.id}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.email}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {new Date(user.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    {user.is_admin ? (
+                      <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-600 rounded">管理员</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">普通用户</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {!user.is_admin && (
+                      <button 
+                        onClick={() => {
+                          if (window.confirm(`确定要删除用户 ${user.email} 吗？`)) {
+                            onDeleteUser(user.id)
+                          }
+                        }}
+                        className="p-2 text-red-400 hover:bg-red-50 rounded transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {users.length === 0 && !loading && (
+            <div className="p-10 text-center text-gray-400">暂无用户信息</div>
+          )}
+          {loading && (
+            <div className="p-10 text-center text-gray-400">正在加载...</div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
