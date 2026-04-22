@@ -9,14 +9,22 @@ import {
   Circle,
   Menu,
   Search,
-  Trash2
+  Trash2,
+  X,
+  Bell,
+  Clock,
+  ChevronRight,
+  ListTodo
 } from 'lucide-react'
 import useTodoStore from './store'
 
 function App() {
-  const { tasks, fetchTasks, addTask, toggleTask, toggleImportant, deleteTask, loading, error } = useTodoStore()
+  const { tasks, fetchTasks, addTask, toggleTask, toggleImportant, deleteTask, updateTask, addSubTask, toggleSubTask, deleteSubTask, loading, error } = useTodoStore()
   const [inputValue, setInputValue] = useState('')
   const [activeFilter, setActiveFilter] = useState('all')
+  const [selectedTaskId, setSelectedTaskId] = useState(null)
+
+  const selectedTask = tasks.find(t => t.id === selectedTaskId)
 
   useEffect(() => {
     fetchTasks()
@@ -40,9 +48,9 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-white text-gray-800 font-sans">
+    <div className="flex h-screen w-full bg-white text-gray-800 font-sans overflow-hidden">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-50 flex flex-col border-r border-gray-200">
+      <div className="w-64 bg-gray-50 flex flex-col border-r border-gray-200 shrink-0">
         <div className="p-4 flex items-center gap-3">
           <Menu size={20} className="text-gray-500 cursor-pointer" />
           <span className="font-semibold text-ms-blue">Microsoft To Do</span>
@@ -102,26 +110,48 @@ function App() {
           {filteredTasks.map(task => (
             <div 
               key={task.id}
-              className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded shadow-sm hover:bg-gray-50 transition-colors group"
+              onClick={() => setSelectedTaskId(task.id)}
+              className={`flex items-center gap-3 p-4 bg-white border border-gray-100 rounded shadow-sm hover:bg-gray-50 transition-colors group cursor-pointer ${selectedTaskId === task.id ? 'bg-blue-50/50 border-blue-100' : ''}`}
             >
-              <button onClick={() => toggleTask(task.id)}>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleTask(task.id)
+                }}
+              >
                 {task.is_completed ? (
                   <CheckCircle2 size={20} className="text-ms-blue" />
                 ) : (
                   <Circle size={20} className="text-gray-300 group-hover:text-gray-400" />
                 )}
               </button>
-              <span className={`flex-1 ${task.is_completed ? 'line-through text-gray-400' : ''}`}>
-                {task.title}
-              </span>
+              <div className={`flex-1 ${task.is_completed ? 'line-through text-gray-400' : ''}`}>
+                <div className="font-medium text-sm">{task.title}</div>
+                {task.subtasks?.length > 0 && (
+                  <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                    <span>
+                      {task.subtasks.filter(s => s.is_completed).length} / {task.subtasks.length}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={() => deleteTask(task.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteTask(task.id)
+                    if (selectedTaskId === task.id) setSelectedTaskId(null)
+                  }}
                   className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-all text-red-400"
                 >
                   <Trash2 size={16} />
                 </button>
-                <button onClick={() => toggleImportant(task.id)}>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleImportant(task.id)
+                  }}
+                >
                   <Star 
                     size={18} 
                     className={task.is_important ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-gray-400'} 
@@ -149,7 +179,166 @@ function App() {
           </form>
         </div>
       </div>
+
+      {/* Detail Sidebar */}
+      {selectedTask && (
+        <DetailPanel 
+          task={selectedTask} 
+          onClose={() => setSelectedTaskId(null)} 
+          updateTask={updateTask}
+          deleteTask={deleteTask}
+          addSubTask={addSubTask}
+          toggleSubTask={toggleSubTask}
+          deleteSubTask={deleteSubTask}
+        />
+      )}
     </div>
+  )
+}
+
+function DetailPanel({ task, onClose, updateTask, deleteTask, addSubTask, toggleSubTask, deleteSubTask }) {
+  const [note, setNote] = useState(task.notes || '')
+  const [subTaskInput, setSubTaskInput] = useState('')
+  
+  // Sync note with task when task changes
+  useEffect(() => {
+    setNote(task.notes || '')
+  }, [task.id, task.notes])
+
+  const handleNoteBlur = () => {
+    if (note !== task.notes) {
+      updateTask(task.id, { notes: note })
+    }
+  }
+
+  const handleAddSubTask = (e) => {
+    e.preventDefault()
+    if (subTaskInput.trim()) {
+      addSubTask(task.id, subTaskInput)
+      setSubTaskInput('')
+    }
+  }
+
+  return (
+    <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+      <div className="p-4 flex items-center justify-between border-b border-gray-200 bg-white">
+        <span className="text-sm font-medium text-gray-500">详情</span>
+        <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded text-gray-500">
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Task Title Area */}
+        <div className="bg-white p-4 rounded border border-gray-200 shadow-sm flex items-start gap-3">
+          <button onClick={() => updateTask(task.id, { is_completed: !task.is_completed })}>
+            {task.is_completed ? (
+              <CheckCircle2 size={22} className="text-ms-blue" />
+            ) : (
+              <Circle size={22} className="text-gray-300" />
+            )}
+          </button>
+          <input 
+            type="text"
+            className={`flex-1 font-semibold text-lg bg-transparent border-none outline-none ${task.is_completed ? 'line-through text-gray-400' : 'text-gray-800'}`}
+            value={task.title}
+            onChange={(e) => updateTask(task.id, { title: e.target.value })}
+          />
+          <button onClick={() => updateTask(task.id, { is_important: !task.is_important })}>
+            <Star 
+              size={20} 
+              className={task.is_important ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} 
+            />
+          </button>
+        </div>
+
+        {/* Subtasks */}
+        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden p-2 space-y-1">
+          {task.subtasks?.map(sub => (
+            <div key={sub.id} className="flex items-center gap-3 p-2 group hover:bg-gray-50 rounded">
+              <button onClick={() => toggleSubTask(task.id, sub.id)}>
+                {sub.is_completed ? (
+                  <CheckCircle2 size={16} className="text-ms-blue" />
+                ) : (
+                  <Circle size={16} className="text-gray-300" />
+                )}
+              </button>
+              <input 
+                type="text"
+                className={`flex-1 text-sm bg-transparent border-none outline-none ${sub.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}`}
+                value={sub.title}
+                onChange={(e) => {}} // TODO: implement subtask rename if needed
+              />
+              <button 
+                onClick={() => deleteSubTask(task.id, sub.id)}
+                className="opacity-0 group-hover:opacity-100 p-1 text-red-300 hover:text-red-400"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          <form onSubmit={handleAddSubTask} className="flex items-center gap-3 p-2">
+            <Plus size={16} className="text-ms-blue" />
+            <input 
+              type="text"
+              placeholder="下一步"
+              className="flex-1 text-sm bg-transparent border-none outline-none placeholder-ms-blue text-ms-blue"
+              value={subTaskInput}
+              onChange={(e) => setSubTaskInput(e.target.value)}
+            />
+          </form>
+        </div>
+
+        {/* Detail Options */}
+        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+          <DetailOption icon={<Sun size={18} />} label="添加到“我的一天”" />
+        </div>
+
+        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+          <DetailOption icon={<Bell size={18} />} label="提醒我" />
+          <div className="h-px bg-gray-100 ml-12"></div>
+          <DetailOption icon={<Calendar size={18} />} label="添加截止日期" />
+          <div className="h-px bg-gray-100 ml-12"></div>
+          <DetailOption icon={<Clock size={18} />} label="重复" />
+        </div>
+
+        {/* Notes */}
+        <div className="bg-white rounded border border-gray-200 shadow-sm p-4">
+          <textarea
+            placeholder="添加备注"
+            className="w-full min-h-[150px] bg-transparent border-none outline-none text-gray-700 resize-none"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={handleNoteBlur}
+          />
+        </div>
+      </div>
+
+      <div className="p-4 border-t border-gray-200 flex items-center justify-between bg-white">
+        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded text-gray-500">
+          <ChevronRight size={20} />
+        </button>
+        <span className="text-xs text-gray-400">创建于 {new Date().toLocaleDateString()}</span>
+        <button 
+          onClick={() => {
+            deleteTask(task.id)
+            onClose()
+          }}
+          className="p-2 hover:bg-red-50 rounded text-red-400"
+        >
+          <Trash2 size={20} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function DetailOption({ icon, label }) {
+  return (
+    <button className="flex items-center gap-4 w-full p-4 hover:bg-gray-50 transition-colors text-gray-600 text-sm">
+      {icon}
+      <span>{label}</span>
+    </button>
   )
 }
 

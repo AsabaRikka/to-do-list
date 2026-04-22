@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select, create_engine, SQLModel
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from models import Task, User, SubTask
 
@@ -55,7 +56,7 @@ def read_tasks(
     is_completed: Optional[bool] = None,
     is_important: Optional[bool] = None
 ):
-    statement = select(Task)
+    statement = select(Task).options(selectinload(Task.subtasks))
     if is_completed is not None:
         statement = statement.where(Task.is_completed == is_completed)
     if is_important is not None:
@@ -65,14 +66,14 @@ def read_tasks(
 
 @app.get("/tasks/{task_id}", response_model=Task)
 def read_task(task_id: int, session: Session = Depends(get_session)):
-    task = session.get(Task, task_id)
+    task = session.exec(select(Task).where(Task.id == task_id).options(selectinload(Task.subtasks))).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
 @app.patch("/tasks/{task_id}", response_model=Task)
 def update_task(task_id: int, task_data: dict = Body(...), session: Session = Depends(get_session)):
-    db_task = session.get(Task, task_id)
+    db_task = session.exec(select(Task).where(Task.id == task_id).options(selectinload(Task.subtasks))).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
     
@@ -91,5 +92,38 @@ def delete_task(task_id: int, session: Session = Depends(get_session)):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     session.delete(task)
+    session.commit()
+    return {"ok": True}
+
+# SubTask CRUD
+@app.post("/tasks/{task_id}/subtasks/", response_model=SubTask)
+def create_subtask(task_id: int, subtask: SubTask, session: Session = Depends(get_session)):
+    subtask.task_id = task_id
+    session.add(subtask)
+    session.commit()
+    session.refresh(subtask)
+    return subtask
+
+@app.patch("/subtasks/{subtask_id}", response_model=SubTask)
+def update_subtask(subtask_id: int, subtask_data: dict = Body(...), session: Session = Depends(get_session)):
+    db_subtask = session.get(SubTask, subtask_id)
+    if not db_subtask:
+        raise HTTPException(status_code=404, detail="SubTask not found")
+    
+    for key, value in subtask_data.items():
+        if hasattr(db_subtask, key):
+            setattr(db_subtask, key, value)
+            
+    session.add(db_subtask)
+    session.commit()
+    session.refresh(db_subtask)
+    return db_subtask
+
+@app.delete("/subtasks/{subtask_id}")
+def delete_subtask(subtask_id: int, session: Session = Depends(get_session)):
+    db_subtask = session.get(SubTask, subtask_id)
+    if not db_subtask:
+        raise HTTPException(status_code=404, detail="SubTask not found")
+    session.delete(db_subtask)
     session.commit()
     return {"ok": True}
